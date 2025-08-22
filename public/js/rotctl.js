@@ -16,6 +16,11 @@ async function fetchStatus() {
         
         updateCompass(data.currentAzimuth);
         
+        // Update beam visualization if it exists
+        if (typeof updateBeamVisualization === 'function') {
+            updateBeamVisualization(data.currentAzimuth);
+        }
+        
     } catch (error) {
         console.error('Status fetch error:', error);
         updateStatusDisplay({
@@ -174,7 +179,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Fetch status immediately and start polling
+    console.log('Initializing status polling...');
     fetchStatus();
+    
+    // Also fetch again after a short delay to ensure we get initial position
+    setTimeout(() => {
+        console.log('Fetching initial position...');
+        fetchStatus();
+    }, 1000);
+    
+    // Start regular polling
     statusInterval = setInterval(fetchStatus, 2000);
 });
 

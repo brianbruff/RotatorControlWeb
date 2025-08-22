@@ -42,7 +42,11 @@ function connectToRotctld() {
         console.log(`Connected to rotctld at ${ROTCTLD_HOST}:${ROTCTLD_PORT}`);
         rotorStatus = 'connected';
         clearTimeout(connectionRetryTimeout);
-        getPosition();
+        // Delay initial position request to ensure connection is stable
+        setTimeout(() => {
+            console.log('Requesting initial position...');
+            getPosition();
+        }, 500);
     });
 
     rotctldClient.on('data', (data) => {
@@ -51,11 +55,20 @@ function connectToRotctld() {
         
         const lines = response.split('\n');
         lines.forEach(line => {
+            // Skip error reporting lines
             if (line.includes('RPRT')) return;
             
+            // Parse azimuth and elevation (rotctld returns "azimuth\nelevation")
             const values = line.trim().split(/\s+/);
             if (values.length >= 1 && !isNaN(values[0])) {
-                currentAzimuth = parseFloat(values[0]);
+                const newAzimuth = parseFloat(values[0]);
+                currentAzimuth = newAzimuth;
+                console.log(`Current azimuth updated: ${currentAzimuth}°`);
+                
+                // If we haven't set a target yet, set it to current position
+                if (targetAzimuth === 0 && currentAzimuth !== 0) {
+                    targetAzimuth = currentAzimuth;
+                }
             }
         });
     });
@@ -94,11 +107,18 @@ function sendCommand(command) {
 }
 
 function getPosition() {
-    if (rotorStatus === 'connected') {
-        sendCommand('p').catch(console.error);
+    if (rotorStatus === 'connected' && rotctldClient) {
+        sendCommand('p')
+            .then(() => {
+                console.log('Position request sent');
+            })
+            .catch(err => {
+                console.error('Failed to get position:', err);
+            });
     }
 }
 
+// Start polling for position updates
 setInterval(getPosition, 2000);
 
 app.get('/api/status', (req, res) => {
