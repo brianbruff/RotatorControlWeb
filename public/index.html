@@ -28,12 +28,44 @@
             max-width: 320px;
             flex-shrink: 0;
         }
+        /* Mobile styles - optimized for Samsung S24 Ultra and similar devices */
         @media (max-width: 768px) {
             .sidebar {
-                width: 280px;
-                min-width: 280px;
-                max-width: 280px;
+                display: none !important;
             }
+            .compass {
+                top: 70px;
+                right: 10px;
+                width: 120px;
+                height: 120px;
+            }
+            .compass-arrow {
+                height: 48px;
+                transform-origin: 50% 60px;
+                top: calc(50% - 60px);
+            }
+            .compass-label {
+                font-size: 12px;
+            }
+            .mobile-header {
+                display: block !important;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 999;
+            }
+            .desktop-only {
+                display: none !important;
+            }
+            #globeViz {
+                padding-top: 60px;
+            }
+        }
+        
+        /* Hide mobile header on desktop */
+        .mobile-header {
+            display: none;
         }
         .beam-path {
             stroke: #ff6b6b;
@@ -107,6 +139,24 @@
     </style>
 </head>
 <body class="bg-gray-900 text-white">
+    <!-- Mobile Header - Only visible on mobile -->
+    <div class="mobile-header bg-gray-800 p-3 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-satellite-dish text-yellow-400"></i>
+                <span class="font-semibold">IO52RN</span>
+                <span class="text-gray-400 text-sm">Limerick</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div class="text-right">
+                    <div class="text-xs text-gray-400">Azimuth</div>
+                    <div class="text-xl font-bold text-yellow-400" id="mobileAzimuth">0°</div>
+                </div>
+                <div id="mobileStatusLed" class="status-led disconnected"></div>
+            </div>
+        </div>
+    </div>
+    
     <div class="flex h-screen overflow-hidden">
         <div class="sidebar bg-gray-800 p-6 overflow-y-auto flex-shrink-0">
             <div class="mb-6">
@@ -227,7 +277,7 @@
                 </div>
             </div>
 
-            <div class="absolute bottom-4 left-4 bg-gray-800 bg-opacity-90 p-3 rounded-lg">
+            <div class="absolute bottom-4 left-4 bg-gray-800 bg-opacity-90 p-3 rounded-lg desktop-only">
                 <div class="text-sm">
                     <p class="mb-1"><i class="fas fa-mouse-pointer mr-2"></i>Click on globe to set azimuth</p>
                     <p><i class="fas fa-search-plus mr-2"></i>Scroll to zoom</p>

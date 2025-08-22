@@ -68,6 +68,16 @@ function updateStatusDisplay(status) {
     
     currentAzimuth.textContent = Math.round(status.currentAzimuth) + '°';
     targetAzimuth.textContent = Math.round(status.targetAzimuth) + '°';
+    
+    // Update mobile azimuth display
+    const mobileAzimuth = document.getElementById('mobileAzimuth');
+    const mobileStatusLed = document.getElementById('mobileStatusLed');
+    if (mobileAzimuth) {
+        mobileAzimuth.textContent = Math.round(status.currentAzimuth) + '°';
+    }
+    if (mobileStatusLed) {
+        mobileStatusLed.className = 'status-led ' + status.status;
+    }
 }
 
 function updateCompass(azimuth) {

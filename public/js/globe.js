@@ -45,13 +45,16 @@ function initGlobe() {
     const globeMaterial = globe.globeMaterial();
     globeMaterial.opacity = 0.95;
 
-    globe.onGlobeClick((coords) => {
-        if (coords && coords.lat !== undefined && coords.lng !== undefined) {
-            const azimuth = calculateAzimuth(LIMERICK_LAT, LIMERICK_LON, coords.lat, coords.lng);
-            setAzimuth(azimuth);
-            updateBeamVisualization(azimuth);
-        }
-    });
+    // Only enable click-to-set on desktop (not mobile)
+    if (window.innerWidth > 768) {
+        globe.onGlobeClick((coords) => {
+            if (coords && coords.lat !== undefined && coords.lng !== undefined) {
+                const azimuth = calculateAzimuth(LIMERICK_LAT, LIMERICK_LON, coords.lat, coords.lng);
+                setAzimuth(azimuth);
+                updateBeamVisualization(azimuth);
+            }
+        });
+    }
 
     window.addEventListener('resize', () => {
         const width = globeContainer.offsetWidth;
