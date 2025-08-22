@@ -109,32 +109,60 @@ function getDestinationPoint(lat, lon, azimuth, distance = 10000) {
 function updateBeamVisualization(azimuth) {
     currentBeamAzimuth = azimuth;
     
-    // Extend beam to go halfway around the globe (20000km)
-    const destination = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, 20000);
+    // Create paths data - collection of points along the beam path
+    const pathsData = [];
     
-    const pathData = [{
-        startLat: LIMERICK_LAT,
-        startLng: LIMERICK_LON,
-        endLat: destination.lat,
-        endLng: destination.lng,
-        color: ['#fbbf24', '#fde047'], // Yellow gradient
-        stroke: 0.8, // Thinner stroke for long distance
-        altitude: 0.2, // Higher altitude for better visibility on long path
-        animateTime: 3000
-    }];
+    // Beam parameters - starts at 1 degree, widens to 20 degrees over distance
+    const numSegments = 50; // More segments for smoother path
+    const maxDistance = 18000; // km - nearly halfway around Earth
     
+    // Create left and right edge paths
+    for (let edge of ['left', 'right']) {
+        const pathPoints = [];
+        
+        for (let i = 0; i <= numSegments; i++) {
+            const distance = (maxDistance / numSegments) * i;
+            // Beam width increases progressively with distance
+            const beamWidth = 1 + (19 * (i / numSegments)); // 1 to 20 degrees
+            
+            const edgeAzimuth = edge === 'left' 
+                ? (azimuth - beamWidth/2 + 360) % 360
+                : (azimuth + beamWidth/2) % 360;
+            
+            const point = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, edgeAzimuth, distance);
+            pathPoints.push([point.lat, point.lng, 0.01]); // Small altitude for visibility
+        }
+        
+        pathsData.push({
+            path: pathPoints,
+            color: 'rgba(251, 191, 36, 0.15)', // Very subtle yellow
+            stroke: 0.8
+        });
+    }
+    
+    // Add center line for reference
+    const centerPath = [];
+    for (let i = 0; i <= numSegments; i++) {
+        const distance = (maxDistance / numSegments) * i;
+        const point = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, distance);
+        centerPath.push([point.lat, point.lng, 0.015]);
+    }
+    
+    pathsData.push({
+        path: centerPath,
+        color: 'rgba(251, 191, 36, 0.25)', // Slightly more visible center
+        stroke: 0.5
+    });
+    
+    // Update globe with paths
     globe
-        .arcsData(pathData)
-        .arcStartLat('startLat')
-        .arcStartLng('startLng')
-        .arcEndLat('endLat')
-        .arcEndLng('endLng')
-        .arcColor('color')
-        .arcStroke('stroke')
-        .arcAltitudeAutoScale(0.3)
-        .arcDashLength(0.5)
-        .arcDashGap(0.2)
-        .arcDashAnimateTime('animateTime');
+        .pathsData(pathsData)
+        .pathPoints('path')
+        .pathColor('color')
+        .pathStroke('stroke')
+        .pathDashLength(0.01)
+        .pathDashGap(0)
+        .pathDashAnimateTime(0);
 
     const ringData = [{
         lat: LIMERICK_LAT,

@@ -7,7 +7,9 @@ let currentStatus = {
 
 async function fetchStatus() {
     try {
-        const response = await fetch('/api/status');
+        const response = await fetch('/api/status', {
+            credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error('Failed to fetch status');
         
         const data = await response.json();
@@ -74,6 +76,7 @@ async function setAzimuth(azimuth) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'same-origin',
             body: JSON.stringify({ azimuth: azimuth })
         });
         
@@ -95,7 +98,8 @@ async function setAzimuth(azimuth) {
 async function stopRotor() {
     try {
         const response = await fetch('/api/stop', {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'same-origin'
         });
         
         if (!response.ok) throw new Error('Failed to stop rotor');
