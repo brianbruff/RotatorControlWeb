@@ -271,4 +271,4 @@ For issues or questions:
 
 73 de [EI6LF]
 
-More reading here: [Blog Post(https://briankeating.net/blog/2025-08-22-building-rotator-control-web-3d-visualization-for-ham-radio/)
+More reading here: [Blog Post](https://briankeating.net/blog/2025-08-22-building-rotator-control-web-3d-visualization-for-ham-radio/)
