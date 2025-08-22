@@ -4,6 +4,7 @@ let currentStatus = {
     currentAzimuth: 0,
     targetAzimuth: 0
 };
+let isAuthenticated = false;
 
 async function fetchStatus() {
     try {
@@ -42,10 +43,18 @@ function updateStatusDisplay(status) {
     
     statusLed.className = 'status-led ' + status.status;
     
+    // Update authentication status if provided
+    if (status.authenticated !== undefined) {
+        isAuthenticated = status.authenticated;
+        updateAuthUI(isAuthenticated);
+    }
+    
     switch(status.status) {
         case 'connected':
             connectionStatus.textContent = 'Connected';
-            statusDetails.textContent = 'Rotctld active at 192.168.100.3:4533';
+            // Show connection details based on authentication
+            statusDetails.textContent = status.connectionDetails || 
+                (isAuthenticated ? 'Rotctld active at 192.168.100.3:4533' : 'Connected to backend');
             break;
         case 'disconnected':
             connectionStatus.textContent = 'Disconnected';
@@ -115,6 +124,80 @@ async function stopRotor() {
     }
 }
 
+function updateAuthUI(authenticated) {
+    const authButton = document.getElementById('authButton');
+    const authStatus = document.getElementById('authStatus');
+    const authUsername = document.getElementById('authUsername');
+    const manualAzimuth = document.getElementById('manualAzimuth');
+    const setAzimuthBtn = document.getElementById('setAzimuthBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const quickBearingBtns = document.querySelectorAll('.quick-bearing');
+    
+    if (authenticated) {
+        authButton.textContent = 'Logout';
+        authButton.onclick = logout;
+        authStatus.style.display = 'block';
+        
+        // Enable controls
+        manualAzimuth.disabled = false;
+        setAzimuthBtn.disabled = false;
+        stopBtn.disabled = false;
+        quickBearingBtns.forEach(btn => btn.disabled = false);
+    } else {
+        authButton.textContent = 'Login';
+        authButton.onclick = () => window.location.href = '/login.html';
+        authStatus.style.display = 'none';
+        
+        // Disable controls
+        manualAzimuth.disabled = true;
+        setAzimuthBtn.disabled = true;
+        stopBtn.disabled = true;
+        quickBearingBtns.forEach(btn => btn.disabled = true);
+    }
+}
+
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/auth-status', {
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        isAuthenticated = data.authenticated;
+        if (data.username) {
+            document.getElementById('authUsername').textContent = `Logged in as ${data.username}`;
+        }
+        updateAuthUI(isAuthenticated);
+    } catch (error) {
+        console.error('Auth check error:', error);
+    }
+}
+
+async function logout() {
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        if (response.ok) {
+            isAuthenticated = false;
+            updateAuthUI(false);
+            showNotification('Logged out successfully', 'info');
+            
+            // Close SSE connection to prevent authentication state from being overridden
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Reinitialize SSE after a short delay to get fresh auth state
+            setTimeout(() => {
+                initializeSSE();
+            }, 1000);
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse`;
@@ -147,7 +230,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const quickBearingBtns = document.querySelectorAll('.quick-bearing');
     
+    // Check authentication status on load
+    checkAuthStatus();
+    
     setAzimuthBtn.addEventListener('click', () => {
+        if (!isAuthenticated) {
+            showNotification('Please login to control the rotator', 'warning');
+            return;
+        }
         const azimuth = parseFloat(manualAzimuthInput.value);
         if (!isNaN(azimuth) && azimuth >= 0 && azimuth <= 360) {
             setAzimuth(azimuth);
@@ -158,17 +248,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     manualAzimuthInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && isAuthenticated) {
             setAzimuthBtn.click();
         }
     });
     
     stopBtn.addEventListener('click', () => {
+        if (!isAuthenticated) {
+            showNotification('Please login to control the rotator', 'warning');
+            return;
+        }
         stopRotor();
     });
     
     quickBearingBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            if (!isAuthenticated) {
+                showNotification('Please login to control the rotator', 'warning');
+                return;
+            }
             const azimuth = parseInt(btn.dataset.azimuth);
             setAzimuth(azimuth);
             updateBeamVisualization(azimuth);
@@ -177,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' || (e.ctrlKey && e.key === 's')) {
+        if ((e.key === 'Escape' || (e.ctrlKey && e.key === 's')) && isAuthenticated) {
             e.preventDefault();
             stopRotor();
         }

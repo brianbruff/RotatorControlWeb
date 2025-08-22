@@ -1,5 +1,5 @@
 const express = require('express');
-const basicAuth = require('express-basic-auth');
+const session = require('express-session');
 const net = require('net');
 const path = require('path');
 const cors = require('cors');
@@ -21,31 +21,49 @@ let sseClients = [];
 app.use(cors());
 app.use(express.json());
 
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'rotctl-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true if using HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Authentication credentials
 const authUsers = {};
 authUsers[process.env.AUTH_USERNAME || 'admin'] = process.env.AUTH_PASSWORD || 'password';
 
-app.use(basicAuth({
-    users: authUsers,
-    challenge: true,
-    realm: 'RotCtl Web Interface'
-}));
+// Middleware to check authentication
+function requireAuth(req, res, next) {
+    if (req.session && req.session.authenticated) {
+        return next();
+    }
+    res.status(401).json({ error: 'Authentication required' });
+}
 
+// Serve static files
 app.use(express.static('public'));
 
 // Broadcast updates to all SSE clients
 function broadcastUpdate() {
-    const data = {
-        status: rotorStatus,
-        currentAzimuth: currentAzimuth,
-        targetAzimuth: targetAzimuth,
-        timestamp: new Date().toISOString()
-    };
-    
-    const message = `data: ${JSON.stringify(data)}\n\n`;
-    
     sseClients = sseClients.filter(client => {
         try {
-            client.write(message);
+            const isAuthenticated = client.session && client.session.authenticated;
+            const data = {
+                status: rotorStatus,
+                currentAzimuth: currentAzimuth,
+                targetAzimuth: targetAzimuth,
+                timestamp: new Date().toISOString(),
+                authenticated: isAuthenticated,
+                connectionDetails: isAuthenticated ? `Rotctld active at ${ROTCTLD_HOST}:${ROTCTLD_PORT}` : 'Connected to backend'
+            };
+            
+            const message = `data: ${JSON.stringify(data)}\n\n`;
+            client.res.write(message);
             return true;
         } catch (err) {
             return false;
@@ -163,34 +181,74 @@ app.get('/api/events', (req, res) => {
         'Access-Control-Allow-Origin': '*'
     });
     
+    const isAuthenticated = req.session && req.session.authenticated;
+    
     // Send initial data
     const initialData = {
         status: rotorStatus,
         currentAzimuth: currentAzimuth,
         targetAzimuth: targetAzimuth,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        authenticated: isAuthenticated,
+        connectionDetails: isAuthenticated ? `Rotctld active at ${ROTCTLD_HOST}:${ROTCTLD_PORT}` : 'Connected to backend'
     };
     res.write(`data: ${JSON.stringify(initialData)}\n\n`);
     
-    // Add client to list
-    sseClients.push(res);
+    // Add client to list with session info
+    sseClients.push({ res, session: req.session });
     
     // Remove client on disconnect
     req.on('close', () => {
-        sseClients = sseClients.filter(client => client !== res);
+        sseClients = sseClients.filter(client => client.res !== res);
+    });
+});
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    if (authUsers[username] && authUsers[username] === password) {
+        req.session.authenticated = true;
+        req.session.username = username;
+        res.json({ success: true, username });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials' });
+    }
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to logout' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Check authentication status
+app.get('/api/auth-status', (req, res) => {
+    res.json({
+        authenticated: req.session && req.session.authenticated,
+        username: req.session ? req.session.username : null
     });
 });
 
 app.get('/api/status', (req, res) => {
+    const isAuthenticated = req.session && req.session.authenticated;
+    
     res.json({
         status: rotorStatus,
         currentAzimuth: currentAzimuth,
         targetAzimuth: targetAzimuth,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        authenticated: isAuthenticated,
+        // Hide IP address from non-authenticated users
+        connectionDetails: isAuthenticated ? `Rotctld active at ${ROTCTLD_HOST}:${ROTCTLD_PORT}` : 'Connected to backend'
     });
 });
 
-app.post('/api/azimuth', async (req, res) => {
+app.post('/api/azimuth', requireAuth, async (req, res) => {
     const { azimuth } = req.body;
     
     if (azimuth === undefined || azimuth < 0 || azimuth > 360) {
@@ -214,7 +272,7 @@ app.post('/api/azimuth', async (req, res) => {
     }
 });
 
-app.post('/api/stop', async (req, res) => {
+app.post('/api/stop', requireAuth, async (req, res) => {
     try {
         await sendCommand('S');
         res.json({ 
