@@ -1,5 +1,9 @@
 # RotCtl Web Interface
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/brianbruff/rotctlweb)](https://hub.docker.com/r/brianbruff/rotctlweb)
+[![Docker Image Size](https://img.shields.io/docker/image-size/brianbruff/rotctlweb)](https://hub.docker.com/r/brianbruff/rotctlweb)
+[![GitHub Actions](https://github.com/brianbruff/RotatorControlWeb/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/brianbruff/RotatorControlWeb/actions)
+
 > 🌍 **Modern 3D Web Interface for Antenna Rotor Control**
 
 A web-based control interface for remote antenna rotor control via rotctld daemon, featuring an interactive 3D globe visualization with real-time beam heading display.
@@ -30,7 +34,26 @@ A web-based control interface for remote antenna rotor control via rotctld daemo
 
 ## Quick Start
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Hub (Easiest)
+
+Pull and run the pre-built image from Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull brianbruff/rotctlweb:latest
+
+# Run with environment variables
+docker run -d \
+  --name rotctl-web \
+  -p 3000:3000 \
+  -e AUTH_USERNAME=admin \
+  -e AUTH_PASSWORD=your_secure_password \
+  -e ROTCTLD_HOST=192.168.100.3 \
+  -e ROTCTLD_PORT=4533 \
+  brianbruff/rotctlweb:latest
+```
+
+### Option 2: Docker Compose (Recommended)
 
 1. Clone the repository:
 ```bash
@@ -51,10 +74,12 @@ docker-compose up -d
 
 4. Access the interface at `http://localhost:3000`
 
-### Option 2: Docker Build
+### Option 3: Build from Source
 
 ```bash
-# Build the image
+# Clone and build
+git clone https://github.com/brianbruff/RotatorControlWeb.git
+cd RotatorControlWeb
 docker build -t rotctl-web .
 
 # Run the container
@@ -68,7 +93,7 @@ docker run -d \
   rotctl-web
 ```
 
-### Option 3: Node.js
+### Option 4: Node.js
 
 1. Clone and install:
 ```bash

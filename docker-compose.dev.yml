@@ -2,10 +2,8 @@ version: '3.8'
 
 services:
   rotctl-web:
-    image: brianbruff/rotctlweb:latest
-    # To build locally instead, comment out 'image' and uncomment 'build':
-    # build: .
-    container_name: rotctl-web
+    build: .
+    container_name: rotctl-web-dev
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -19,6 +17,8 @@ services:
       - QTH_LONGITUDE=${QTH_LONGITUDE:--8.6333}
       - QTH_GRID_SQUARE=${QTH_GRID_SQUARE:-IO52RN}
       - QTH_LOCATION_NAME=${QTH_LOCATION_NAME:-Limerick, Ireland}
+    volumes:
+      # Mount source code for development
+      - ./server.js:/app/server.js:ro
+      - ./public:/app/public:ro
     network_mode: bridge
-    # For host network access to rotctld on same machine, uncomment:
-    # network_mode: host
