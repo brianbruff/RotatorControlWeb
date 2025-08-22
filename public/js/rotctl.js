@@ -1,4 +1,4 @@
-let statusInterval;
+let eventSource;
 let currentStatus = {
     status: 'disconnected',
     currentAzimuth: 0,
@@ -179,22 +179,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Fetch status immediately and start polling
-    console.log('Initializing status polling...');
+    // Initialize Server-Sent Events for real-time updates
+    console.log('Initializing SSE connection...');
+    initializeSSE();
+    
+    // Also fetch initial status as backup
     fetchStatus();
-    
-    // Also fetch again after a short delay to ensure we get initial position
-    setTimeout(() => {
-        console.log('Fetching initial position...');
-        fetchStatus();
-    }, 1000);
-    
-    // Start regular polling
-    statusInterval = setInterval(fetchStatus, 2000);
 });
 
+function initializeSSE() {
+    // Close existing connection if any
+    if (eventSource) {
+        eventSource.close();
+    }
+    
+    // Create new EventSource connection
+    eventSource = new EventSource('/api/events');
+    
+    eventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            console.log('SSE update received:', data);
+            
+            updateStatusDisplay(data);
+            currentStatus = data;
+            updateCompass(data.currentAzimuth);
+            
+            // Update beam visualization if it exists
+            if (typeof updateBeamVisualization === 'function') {
+                updateBeamVisualization(data.currentAzimuth);
+            }
+        } catch (error) {
+            console.error('SSE data parse error:', error);
+        }
+    };
+    
+    eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        updateStatusDisplay({
+            status: 'error',
+            currentAzimuth: currentStatus.currentAzimuth,
+            targetAzimuth: currentStatus.targetAzimuth
+        });
+        
+        // Reconnect after 5 seconds
+        setTimeout(() => {
+            console.log('Attempting to reconnect SSE...');
+            initializeSSE();
+        }, 5000);
+    };
+    
+    eventSource.onopen = () => {
+        console.log('SSE connection established');
+    };
+}
+
 window.addEventListener('beforeunload', () => {
-    if (statusInterval) {
-        clearInterval(statusInterval);
+    if (eventSource) {
+        eventSource.close();
     }
 });

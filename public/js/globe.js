@@ -24,7 +24,7 @@ function initGlobe() {
         lat: LIMERICK_LAT,
         lng: LIMERICK_LON,
         label: 'IO52RN',
-        color: '#10b981',
+        color: '#fbbf24', // Yellow to match theme
         size: 0.5
     }];
     
@@ -109,16 +109,17 @@ function getDestinationPoint(lat, lon, azimuth, distance = 10000) {
 function updateBeamVisualization(azimuth) {
     currentBeamAzimuth = azimuth;
     
-    const destination = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, 5000);
+    // Reduce distance for narrower beam (2000km instead of 5000km)
+    const destination = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, 2000);
     
     const pathData = [{
         startLat: LIMERICK_LAT,
         startLng: LIMERICK_LON,
         endLat: destination.lat,
         endLng: destination.lng,
-        color: ['#10b981', '#ef4444'],
-        stroke: 3,
-        altitude: 0.15,
+        color: ['#fbbf24', '#fde047'], // Yellow gradient
+        stroke: 1.5, // Thinner stroke
+        altitude: 0.05, // Lower altitude for less curve
         animateTime: 2000
     }];
     
@@ -138,10 +139,10 @@ function updateBeamVisualization(azimuth) {
     const ringData = [{
         lat: LIMERICK_LAT,
         lng: LIMERICK_LON,
-        maxR: 5,
+        maxR: 3, // Smaller ring
         propagationSpeed: 2,
         repeatPeriod: 2000,
-        color: 'rgba(16, 185, 129, 0.6)'
+        color: 'rgba(251, 191, 36, 0.6)' // Yellow to match beam
     }];
     
     globe

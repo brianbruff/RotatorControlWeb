@@ -16,6 +16,7 @@ let currentAzimuth = 0;
 let targetAzimuth = 0;
 let rotorStatus = 'disconnected';
 let connectionRetryTimeout = null;
+let sseClients = [];
 
 app.use(cors());
 app.use(express.json());
@@ -30,6 +31,27 @@ app.use(basicAuth({
 }));
 
 app.use(express.static('public'));
+
+// Broadcast updates to all SSE clients
+function broadcastUpdate() {
+    const data = {
+        status: rotorStatus,
+        currentAzimuth: currentAzimuth,
+        targetAzimuth: targetAzimuth,
+        timestamp: new Date().toISOString()
+    };
+    
+    const message = `data: ${JSON.stringify(data)}\n\n`;
+    
+    sseClients = sseClients.filter(client => {
+        try {
+            client.write(message);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    });
+}
 
 function connectToRotctld() {
     if (rotctldClient) {
@@ -54,14 +76,22 @@ function connectToRotctld() {
         console.log('Rotctld response:', response);
         
         const lines = response.split('\n');
-        lines.forEach(line => {
+        
+        // Only process the first line (azimuth), ignore elevation
+        if (lines.length > 0) {
+            const line = lines[0];
+            
             // Skip error reporting lines
             if (line.includes('RPRT')) return;
             
-            // Parse azimuth and elevation (rotctld returns "azimuth\nelevation")
+            // Parse azimuth value
             const values = line.trim().split(/\s+/);
             if (values.length >= 1 && !isNaN(values[0])) {
-                const newAzimuth = parseFloat(values[0]);
+                let newAzimuth = parseFloat(values[0]);
+                // Handle negative azimuth values (convert to 0-360 range)
+                if (newAzimuth < 0) {
+                    newAzimuth = 360 + newAzimuth;
+                }
                 currentAzimuth = newAzimuth;
                 console.log(`Current azimuth updated: ${currentAzimuth}°`);
                 
@@ -69,8 +99,11 @@ function connectToRotctld() {
                 if (targetAzimuth === 0 && currentAzimuth !== 0) {
                     targetAzimuth = currentAzimuth;
                 }
+                
+                // Broadcast the update to all SSE clients
+                broadcastUpdate();
             }
-        });
+        }
     });
 
     rotctldClient.on('error', (err) => {
@@ -120,6 +153,33 @@ function getPosition() {
 
 // Start polling for position updates
 setInterval(getPosition, 2000);
+
+// Server-Sent Events endpoint for real-time updates
+app.get('/api/events', (req, res) => {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+    });
+    
+    // Send initial data
+    const initialData = {
+        status: rotorStatus,
+        currentAzimuth: currentAzimuth,
+        targetAzimuth: targetAzimuth,
+        timestamp: new Date().toISOString()
+    };
+    res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+    
+    // Add client to list
+    sseClients.push(res);
+    
+    // Remove client on disconnect
+    req.on('close', () => {
+        sseClients = sseClients.filter(client => client !== res);
+    });
+});
 
 app.get('/api/status', (req, res) => {
     res.json({
