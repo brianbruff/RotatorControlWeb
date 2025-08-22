@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  rotctl-web:
+    build: .
+    container_name: rotctl-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-changeme}
+      - ROTCTLD_HOST=${ROTCTLD_HOST:-192.168.100.3}
+      - ROTCTLD_PORT=${ROTCTLD_PORT:-4533}
+      - QTH_LATITUDE=${QTH_LATITUDE:-52.6667}
+      - QTH_LONGITUDE=${QTH_LONGITUDE:--8.6333}
+      - QTH_GRID_SQUARE=${QTH_GRID_SQUARE:-IO52RN}
+      - QTH_LOCATION_NAME=${QTH_LOCATION_NAME:-Limerick, Ireland}
+    network_mode: bridge
+    # For host network access to rotctld on same machine, uncomment:
+    # network_mode: host
