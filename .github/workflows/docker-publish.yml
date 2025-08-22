@@ -12,7 +12,6 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_HUB_USERNAME: brianbruff
   IMAGE_NAME: rotctlweb
 
 jobs:
@@ -30,14 +29,14 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKER_HUB_USERNAME }}
+          username: ${{ vars.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          images: ${{ vars.DOCKER_HUB_USER }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -62,8 +61,8 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/dockerhub-description@v4
         with:
-          username: ${{ env.DOCKER_HUB_USERNAME }}
+          username: ${{ vars.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          repository: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          repository: ${{ vars.DOCKER_HUB_USER }}/${{ env.IMAGE_NAME }}
           readme-filepath: ./README.md
           short-description: "Web-based 3D interface for antenna rotor control via rotctld"
