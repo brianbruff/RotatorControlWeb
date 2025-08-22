@@ -1,8 +1,16 @@
 # RotCtl Web Interface
 
-A web-based control interface for remote antenna rotor control via rotctld daemon, featuring an interactive 3D globe visualization.
+> 🌍 **Modern 3D Web Interface for Antenna Rotor Control**
 
+A web-based control interface for remote antenna rotor control via rotctld daemon, featuring an interactive 3D globe visualization with real-time beam heading display.
+
+<div align="center">
+  
 ![RotCtl Web Interface Screenshot](docs/images/screenshot.png)
+
+*Click anywhere on the globe to point your antenna - Control your rotor from anywhere!*
+
+</div>
 
 ## Features
 
