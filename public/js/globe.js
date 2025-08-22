@@ -25,7 +25,7 @@ function initGlobe() {
         lng: LIMERICK_LON,
         label: 'IO52RN',
         color: '#fbbf24', // Yellow to match theme
-        size: 0.5
+        size: 0.05  // Even smaller dot - 50% of previous size
     }];
     
     globe
@@ -35,10 +35,11 @@ function initGlobe() {
         .pointColor('color')
         .pointAltitude(0.01)
         .pointRadius('size')
+        .pointResolution(12) // Lower resolution for smaller size
         .pointLabel(d => `<div style="text-align: center; padding: 5px; background: rgba(0, 0, 0, 0.8); border-radius: 3px;">
             <div style="font-weight: bold;">${d.label}</div>
             <div style="font-size: 0.8em;">Limerick, Ireland</div>
-            <div style="font-size: 0.7em; color: #9ca3af;">QTH Location</div>
+            <div style="font-size: 0.7em; color: #9ca3af;">Antenna Tower</div>
         </div>`);
 
     const globeMaterial = globe.globeMaterial();
@@ -135,8 +136,8 @@ function updateBeamVisualization(azimuth) {
         
         pathsData.push({
             path: pathPoints,
-            color: 'rgba(251, 191, 36, 0.15)', // Very subtle yellow
-            stroke: 0.8
+            color: 'rgba(251, 191, 36, 0.35)', // More visible yellow for edges
+            stroke: 1.0
         });
     }
     
@@ -150,8 +151,8 @@ function updateBeamVisualization(azimuth) {
     
     pathsData.push({
         path: centerPath,
-        color: 'rgba(251, 191, 36, 0.25)', // Slightly more visible center
-        stroke: 0.5
+        color: 'rgba(251, 191, 36, 0.45)', // More visible center line
+        stroke: 0.8
     });
     
     // Update globe with paths
@@ -164,23 +165,8 @@ function updateBeamVisualization(azimuth) {
         .pathDashGap(0)
         .pathDashAnimateTime(0);
 
-    const ringData = [{
-        lat: LIMERICK_LAT,
-        lng: LIMERICK_LON,
-        maxR: 3, // Smaller ring
-        propagationSpeed: 2,
-        repeatPeriod: 2000,
-        color: 'rgba(251, 191, 36, 0.6)' // Yellow to match beam
-    }];
-    
-    globe
-        .ringsData(ringData)
-        .ringLat('lat')
-        .ringLng('lng')
-        .ringMaxRadius('maxR')
-        .ringPropagationSpeed('propagationSpeed')
-        .ringRepeatPeriod('repeatPeriod')
-        .ringColor('color');
+    // Remove the pulsing ring animation - no longer needed
+    globe.ringsData([]);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
