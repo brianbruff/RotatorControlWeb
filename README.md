@@ -34,23 +34,29 @@ npm install
 
 ## Configuration
 
-The server is configured to connect to rotctld at:
-- Host: `192.168.100.3`
-- Port: `4533`
-
-To change these settings, edit `server.js`:
-```javascript
-const ROTCTLD_HOST = '192.168.100.3';
-const ROTCTLD_PORT = 4533;
+1. Copy the example environment file:
+```bash
+cp .env.example .env
 ```
 
-## Authentication
+2. Edit `.env` file with your settings:
+```bash
+# Authentication (CHANGE THESE!)
+AUTH_USERNAME=admin
+AUTH_PASSWORD=your_secure_password_here
 
-Default credentials:
-- Username: `admin`
-- Password: `Butt!Lifters`
+# Rotctld Connection
+ROTCTLD_HOST=192.168.100.3
+ROTCTLD_PORT=4533
 
-To change credentials, edit the basicAuth configuration in `server.js`.
+# QTH Location
+QTH_LATITUDE=52.6667
+QTH_LONGITUDE=-8.6333
+QTH_GRID_SQUARE=IO52RN
+QTH_LOCATION_NAME=Limerick, Ireland
+```
+
+**Important:** Never commit the `.env` file to version control!
 
 ## Running the Application
 
