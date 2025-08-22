@@ -5,6 +5,7 @@ const GRID_SQUARE = "IO52RN";
 let globe;
 let currentBeamAzimuth = 0;
 let beamPaths = [];
+let animationFrameId = null;
 
 function initGlobe() {
     const globeContainer = document.getElementById('globeViz');
@@ -112,6 +113,13 @@ function getDestinationPoint(lat, lon, azimuth, distance = 10000) {
 
 function updateBeamVisualization(azimuth) {
     currentBeamAzimuth = azimuth;
+    renderBeam();
+}
+
+function renderBeam() {
+    if (currentBeamAzimuth === null || currentBeamAzimuth === undefined) return;
+    
+    const azimuth = currentBeamAzimuth;
     
     // Create paths data - collection of points along the beam path
     const pathsData = [];
@@ -120,7 +128,11 @@ function updateBeamVisualization(azimuth) {
     const numSegments = 50; // More segments for smoother path
     const maxDistance = 18000; // km - nearly halfway around Earth
     
-    // Create left and right edge paths
+    // Get subtle pulse value for outer lines only (0.5 to 0.7 opacity)
+    const pulseTime = Date.now() / 3000; // Slow 3-second cycle
+    const pulseFactor = 0.6 + Math.sin(pulseTime * Math.PI * 2) * 0.1; // Subtle pulse between 0.5 and 0.7
+    
+    // Create left and right edge paths with subtle pulse
     for (let edge of ['left', 'right']) {
         const pathPoints = [];
         
@@ -139,12 +151,12 @@ function updateBeamVisualization(azimuth) {
         
         pathsData.push({
             path: pathPoints,
-            color: 'rgba(251, 191, 36, 0.35)', // More visible yellow for edges
-            stroke: 1.0
+            color: `rgba(251, 191, 36, ${pulseFactor})`, // Subtle pulsing opacity for edges
+            stroke: 3  // Thicker stroke for visibility
         });
     }
     
-    // Add center line for reference
+    // Add center line for reference (static, no pulse)
     const centerPath = [];
     for (let i = 0; i <= numSegments; i++) {
         const distance = (maxDistance / numSegments) * i;
@@ -154,8 +166,8 @@ function updateBeamVisualization(azimuth) {
     
     pathsData.push({
         path: centerPath,
-        color: 'rgba(251, 191, 36, 0.45)', // More visible center line
-        stroke: 0.8
+        color: 'rgba(251, 191, 36, 0.7)', // Static center line - more visible
+        stroke: 2.5  // Thicker stroke
     });
     
     // Update globe with paths
@@ -164,14 +176,29 @@ function updateBeamVisualization(azimuth) {
         .pathPoints('path')
         .pathColor('color')
         .pathStroke('stroke')
-        .pathDashLength(0.01)
+        .pathDashLength(0)
         .pathDashGap(0)
-        .pathDashAnimateTime(0);
+        .pathDashAnimateTime(0)
+        .pathTransitionDuration(0);
 
     // Remove the pulsing ring animation - no longer needed
     globe.ringsData([]);
 }
 
+// Animation loop for subtle pulsing of outer beam lines
+function animateBeam() {
+    renderBeam();
+    animationFrameId = requestAnimationFrame(animateBeam);
+}
+
+// Start the animation
+function startBeamAnimation() {
+    if (!animationFrameId) {
+        animateBeam();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initGlobe();
+    startBeamAnimation();
 });
