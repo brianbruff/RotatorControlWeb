@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RotCtl Web Interface - IO52RN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        #globeViz {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        .beam-path {
+            stroke: #ff6b6b;
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.8;
+        }
+        .status-led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-led.connected {
+            background-color: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 2s infinite;
+        }
+        .status-led.disconnected {
+            background-color: #ef4444;
+        }
+        .status-led.error {
+            background-color: #f59e0b;
+            animation: blink 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+        .compass {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(17, 24, 39, 0.9);
+            border-radius: 50%;
+            border: 2px solid #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .compass-arrow {
+            position: absolute;
+            width: 4px;
+            height: 60px;
+            background: linear-gradient(to top, transparent, #ef4444);
+            transform-origin: bottom center;
+            transition: transform 0.3s ease;
+        }
+        .compass-label {
+            position: absolute;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .compass-label.n { top: 5px; }
+        .compass-label.s { bottom: 5px; }
+        .compass-label.e { right: 5px; }
+        .compass-label.w { left: 5px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="flex h-screen">
+        <div class="w-80 bg-gray-800 p-6 overflow-y-auto">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold mb-2">
+                    <i class="fas fa-satellite-dish mr-2"></i>
+                    RotCtl Control
+                </h1>
+                <p class="text-gray-400 text-sm">IO52RN - Limerick, Ireland</p>
+            </div>
+
+            <div class="mb-6 p-4 bg-gray-700 rounded-lg">
+                <div class="flex items-center mb-2">
+                    <span class="status-led" id="statusLed"></span>
+                    <span id="connectionStatus" class="text-sm">Disconnected</span>
+                </div>
+                <div class="text-xs text-gray-400" id="statusDetails">
+                    Connecting to 192.168.100.3:4533...
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Current Position</h3>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-400">Azimuth:</span>
+                        <span class="text-2xl font-mono font-bold" id="currentAzimuth">0°</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Target:</span>
+                        <span class="text-xl font-mono" id="targetAzimuth">0°</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Manual Control</h3>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <label class="block mb-2 text-sm">Set Azimuth (0-360°)</label>
+                    <div class="flex gap-2">
+                        <input 
+                            type="number" 
+                            id="manualAzimuth" 
+                            min="0" 
+                            max="360" 
+                            step="1"
+                            class="flex-1 px-3 py-2 bg-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter azimuth"
+                        />
+                        <button 
+                            id="setAzimuthBtn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                        >
+                            <i class="fas fa-location-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold mb-3">Quick Bearings</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="quick-bearing px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors" data-azimuth="0">
+                        N (0°)
+                    </button>
+                    <button class="quick-bearing px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors" data-azimuth="90">
+                        E (90°)
+                    </button>
+                    <button class="quick-bearing px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors" data-azimuth="180">
+                        S (180°)
+                    </button>
+                    <button class="quick-bearing px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors" data-azimuth="270">
+                        W (270°)
+                    </button>
+                </div>
+            </div>
+
+            <button 
+                id="stopBtn"
+                class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-semibold"
+            >
+                <i class="fas fa-stop mr-2"></i>
+                EMERGENCY STOP
+            </button>
+
+            <div class="mt-6 pt-6 border-t border-gray-700">
+                <div class="text-xs text-gray-500">
+                    <p>Grid Square: IO52RN</p>
+                    <p>Lat: 52.6667°N</p>
+                    <p>Lon: 8.6333°W</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 relative">
+            <div id="globeViz"></div>
+            
+            <div class="compass">
+                <span class="compass-label n">N</span>
+                <span class="compass-label s">S</span>
+                <span class="compass-label e">E</span>
+                <span class="compass-label w">W</span>
+                <div class="compass-arrow" id="compassArrow"></div>
+                <div class="absolute text-center">
+                    <div class="text-2xl font-bold" id="compassDegrees">0°</div>
+                    <div class="text-xs text-gray-500">Azimuth</div>
+                </div>
+            </div>
+
+            <div class="absolute bottom-4 left-4 bg-gray-800 bg-opacity-90 p-3 rounded-lg">
+                <div class="text-sm">
+                    <p class="mb-1"><i class="fas fa-mouse-pointer mr-2"></i>Click on globe to set azimuth</p>
+                    <p><i class="fas fa-search-plus mr-2"></i>Scroll to zoom</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/globe.js"></script>
+    <script src="/js/rotctl.js"></script>
+</body>
+</html>
