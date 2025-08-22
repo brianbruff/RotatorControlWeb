@@ -109,8 +109,8 @@ function getDestinationPoint(lat, lon, azimuth, distance = 10000) {
 function updateBeamVisualization(azimuth) {
     currentBeamAzimuth = azimuth;
     
-    // Reduce distance for narrower beam (2000km instead of 5000km)
-    const destination = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, 2000);
+    // Extend beam to go halfway around the globe (20000km)
+    const destination = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, 20000);
     
     const pathData = [{
         startLat: LIMERICK_LAT,
@@ -118,9 +118,9 @@ function updateBeamVisualization(azimuth) {
         endLat: destination.lat,
         endLng: destination.lng,
         color: ['#fbbf24', '#fde047'], // Yellow gradient
-        stroke: 1.5, // Thinner stroke
-        altitude: 0.05, // Lower altitude for less curve
-        animateTime: 2000
+        stroke: 0.8, // Thinner stroke for long distance
+        altitude: 0.2, // Higher altitude for better visibility on long path
+        animateTime: 3000
     }];
     
     globe
