@@ -9,9 +9,13 @@ Before the GitHub Action can push images to Docker Hub, you need to:
    - Sign up for a free account
 
 2. **Create the Docker Hub Repository**
-   - Log in to Docker Hub
-   - Create a new repository named `rotctlweb`
-   - Make it public
+   - Log in to Docker Hub at https://hub.docker.com
+   - Click "Create Repository" 
+   - Repository name: `rotctlweb` (MUST match exactly)
+   - Namespace: Your Docker Hub username (e.g., `brianbruff`)
+   - Visibility: Public
+   - Click "Create"
+   - The full repository name will be: `brianbruff/rotctlweb`
 
 3. **Generate a Docker Hub Access Token**
    - Go to https://hub.docker.com/settings/security
