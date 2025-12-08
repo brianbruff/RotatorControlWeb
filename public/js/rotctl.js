@@ -12,18 +12,18 @@ async function fetchStatus() {
             credentials: 'same-origin'
         });
         if (!response.ok) throw new Error('Failed to fetch status');
-        
+
         const data = await response.json();
         updateStatusDisplay(data);
         currentStatus = data;
-        
+
         updateCompass(data.currentAzimuth);
-        
+
         // Update beam visualization if it exists
         if (typeof updateBeamVisualization === 'function') {
             updateBeamVisualization(data.currentAzimuth);
         }
-        
+
     } catch (error) {
         console.error('Status fetch error:', error);
         updateStatusDisplay({
@@ -40,20 +40,20 @@ function updateStatusDisplay(status) {
     const statusDetails = document.getElementById('statusDetails');
     const currentAzimuth = document.getElementById('currentAzimuth');
     const targetAzimuth = document.getElementById('targetAzimuth');
-    
+
     statusLed.className = 'status-led ' + status.status;
-    
+
     // Update authentication status if provided
     if (status.authenticated !== undefined) {
         isAuthenticated = status.authenticated;
         updateAuthUI(isAuthenticated);
     }
-    
-    switch(status.status) {
+
+    switch (status.status) {
         case 'connected':
             connectionStatus.textContent = 'Connected';
             // Show connection details based on authentication
-            statusDetails.textContent = status.connectionDetails || 
+            statusDetails.textContent = status.connectionDetails ||
                 (isAuthenticated ? 'Rotctld active at 192.168.100.3:4533' : 'Connected to backend');
             break;
         case 'disconnected':
@@ -65,10 +65,10 @@ function updateStatusDisplay(status) {
             statusDetails.textContent = 'Check rotctld daemon';
             break;
     }
-    
+
     currentAzimuth.textContent = Math.round(status.currentAzimuth) + '°';
     targetAzimuth.textContent = Math.round(status.targetAzimuth) + '°';
-    
+
     // Update mobile azimuth display
     const mobileAzimuth = document.getElementById('mobileAzimuth');
     const mobileStatusLed = document.getElementById('mobileStatusLed');
@@ -83,7 +83,7 @@ function updateStatusDisplay(status) {
 function updateCompass(azimuth) {
     const compassArrow = document.getElementById('compassArrow');
     const compassDegrees = document.getElementById('compassDegrees');
-    
+
     compassArrow.style.transform = `rotate(${azimuth}deg)`;
     compassDegrees.textContent = Math.round(azimuth) + '°';
 }
@@ -98,16 +98,16 @@ async function setAzimuth(azimuth) {
             credentials: 'same-origin',
             body: JSON.stringify({ azimuth: azimuth })
         });
-        
+
         if (!response.ok) throw new Error('Failed to set azimuth');
-        
+
         const data = await response.json();
         console.log('Azimuth set:', data);
-        
+
         document.getElementById('targetAzimuth').textContent = azimuth + '°';
-        
+
         showNotification(`Setting azimuth to ${azimuth}°`, 'success');
-        
+
     } catch (error) {
         console.error('Set azimuth error:', error);
         showNotification('Failed to set azimuth', 'error');
@@ -120,14 +120,14 @@ async function stopRotor() {
             method: 'POST',
             credentials: 'same-origin'
         });
-        
+
         if (!response.ok) throw new Error('Failed to stop rotor');
-        
+
         const data = await response.json();
         console.log('Stop command sent:', data);
-        
+
         showNotification('Emergency stop activated', 'warning');
-        
+
     } catch (error) {
         console.error('Stop rotor error:', error);
         showNotification('Failed to send stop command', 'error');
@@ -142,12 +142,12 @@ function updateAuthUI(authenticated) {
     const setAzimuthBtn = document.getElementById('setAzimuthBtn');
     const stopBtn = document.getElementById('stopBtn');
     const quickBearingBtns = document.querySelectorAll('.quick-bearing');
-    
+
     if (authenticated) {
         authButton.textContent = 'Logout';
         authButton.onclick = logout;
         authStatus.style.display = 'block';
-        
+
         // Enable controls
         manualAzimuth.disabled = false;
         setAzimuthBtn.disabled = false;
@@ -157,7 +157,7 @@ function updateAuthUI(authenticated) {
         authButton.textContent = 'Login';
         authButton.onclick = () => window.location.href = '/login.html';
         authStatus.style.display = 'none';
-        
+
         // Disable controls
         manualAzimuth.disabled = true;
         setAzimuthBtn.disabled = true;
@@ -192,12 +192,12 @@ async function logout() {
             isAuthenticated = false;
             updateAuthUI(false);
             showNotification('Logged out successfully', 'info');
-            
+
             // Close SSE connection to prevent authentication state from being overridden
             if (eventSource) {
                 eventSource.close();
             }
-            
+
             // Reinitialize SSE after a short delay to get fresh auth state
             setTimeout(() => {
                 initializeSSE();
@@ -211,8 +211,8 @@ async function logout() {
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse`;
-    
-    switch(type) {
+
+    switch (type) {
         case 'success':
             notification.className += ' bg-green-600';
             break;
@@ -225,10 +225,10 @@ function showNotification(message, type = 'info') {
         default:
             notification.className += ' bg-blue-600';
     }
-    
+
     notification.textContent = message;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.remove();
     }, 3000);
@@ -239,10 +239,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const setAzimuthBtn = document.getElementById('setAzimuthBtn');
     const stopBtn = document.getElementById('stopBtn');
     const quickBearingBtns = document.querySelectorAll('.quick-bearing');
-    
+
+    // Menu Toggle Logic
+    const menuToggle = document.getElementById('menuToggle');
+    const menuClose = document.getElementById('menuClose');
+    const sidebar = document.getElementById('sidebar');
+
+    function toggleMenu() {
+        const isClosed = sidebar.classList.contains('-translate-x-full');
+        if (isClosed) {
+            sidebar.classList.remove('-translate-x-full');
+            menuToggle.classList.add('hidden'); // Hide toggle button when menu is open
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            menuToggle.classList.remove('hidden'); // Show toggle button when menu is closed
+        }
+    }
+
+    if (menuToggle) {
+        menuToggle.addEventListener('click', toggleMenu);
+    }
+
+    if (menuClose) {
+        menuClose.addEventListener('click', toggleMenu);
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        const isClickInsideSidebar = sidebar.contains(e.target);
+        const isClickOnToggle = menuToggle && menuToggle.contains(e.target);
+        const isMenuOpen = !sidebar.classList.contains('-translate-x-full');
+
+        if (isMenuOpen && !isClickInsideSidebar && !isClickOnToggle) {
+            toggleMenu();
+        }
+    });
+
     // Check authentication status on load
     checkAuthStatus();
-    
+
     setAzimuthBtn.addEventListener('click', () => {
         if (!isAuthenticated) {
             showNotification('Please login to control the rotator', 'warning');
@@ -256,13 +291,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Please enter a valid azimuth (0-360)', 'error');
         }
     });
-    
+
     manualAzimuthInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && isAuthenticated) {
             setAzimuthBtn.click();
         }
     });
-    
+
     stopBtn.addEventListener('click', () => {
         if (!isAuthenticated) {
             showNotification('Please login to control the rotator', 'warning');
@@ -270,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         stopRotor();
     });
-    
+
     quickBearingBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             if (!isAuthenticated) {
@@ -283,18 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
             manualAzimuthInput.value = azimuth;
         });
     });
-    
+
     document.addEventListener('keydown', (e) => {
         if ((e.key === 'Escape' || (e.ctrlKey && e.key === 's')) && isAuthenticated) {
             e.preventDefault();
             stopRotor();
         }
     });
-    
+
     // Initialize Server-Sent Events for real-time updates
     console.log('Initializing SSE connection...');
     initializeSSE();
-    
+
     // Also fetch initial status as backup
     fetchStatus();
 });
@@ -304,19 +339,19 @@ function initializeSSE() {
     if (eventSource) {
         eventSource.close();
     }
-    
+
     // Create new EventSource connection
     eventSource = new EventSource('/api/events');
-    
+
     eventSource.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             console.log('SSE update received:', data);
-            
+
             updateStatusDisplay(data);
             currentStatus = data;
             updateCompass(data.currentAzimuth);
-            
+
             // Update beam visualization if it exists
             if (typeof updateBeamVisualization === 'function') {
                 updateBeamVisualization(data.currentAzimuth);
@@ -325,7 +360,7 @@ function initializeSSE() {
             console.error('SSE data parse error:', error);
         }
     };
-    
+
     eventSource.onerror = (error) => {
         console.error('SSE connection error:', error);
         updateStatusDisplay({
@@ -333,14 +368,14 @@ function initializeSSE() {
             currentAzimuth: currentStatus.currentAzimuth,
             targetAzimuth: currentStatus.targetAzimuth
         });
-        
+
         // Reconnect after 5 seconds
         setTimeout(() => {
             console.log('Attempting to reconnect SSE...');
             initializeSSE();
         }, 5000);
     };
-    
+
     eventSource.onopen = () => {
         console.log('SSE connection established');
     };

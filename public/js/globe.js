@@ -9,9 +9,10 @@ let animationFrameId = null;
 
 function initGlobe() {
     const globeContainer = document.getElementById('globeViz');
-    
+
     globe = Globe()
         (globeContainer)
+        .globeTileEngineUrl((x, y, l) => `https://mt1.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${l}`)
         .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
         .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
         .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
@@ -28,7 +29,7 @@ function initGlobe() {
         color: '#fbbf24', // Yellow to match theme
         size: 0.05  // Even smaller dot - 50% of previous size
     }];
-    
+
     globe
         .pointsData(markerData)
         .pointLat('lat')
@@ -69,19 +70,19 @@ function initGlobe() {
 function calculateAzimuth(lat1, lon1, lat2, lon2) {
     const toRad = Math.PI / 180;
     const toDeg = 180 / Math.PI;
-    
+
     const dLon = (lon2 - lon1) * toRad;
     const lat1Rad = lat1 * toRad;
     const lat2Rad = lat2 * toRad;
-    
+
     const y = Math.sin(dLon) * Math.cos(lat2Rad);
-    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - 
-              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-    
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+
     let azimuth = Math.atan2(y, x) * toDeg;
-    
+
     azimuth = (azimuth + 360) % 360;
-    
+
     return Math.round(azimuth);
 }
 
@@ -89,22 +90,22 @@ function getDestinationPoint(lat, lon, azimuth, distance = 10000) {
     const R = 6371;
     const toRad = Math.PI / 180;
     const toDeg = 180 / Math.PI;
-    
+
     const lat1Rad = lat * toRad;
     const lon1Rad = lon * toRad;
     const azimuthRad = azimuth * toRad;
     const angularDistance = distance / R;
-    
+
     const lat2Rad = Math.asin(
         Math.sin(lat1Rad) * Math.cos(angularDistance) +
         Math.cos(lat1Rad) * Math.sin(angularDistance) * Math.cos(azimuthRad)
     );
-    
+
     const lon2Rad = lon1Rad + Math.atan2(
         Math.sin(azimuthRad) * Math.sin(angularDistance) * Math.cos(lat1Rad),
         Math.cos(angularDistance) - Math.sin(lat1Rad) * Math.sin(lat2Rad)
     );
-    
+
     return {
         lat: lat2Rad * toDeg,
         lng: ((lon2Rad * toDeg + 540) % 360) - 180
@@ -118,44 +119,44 @@ function updateBeamVisualization(azimuth) {
 
 function renderBeam() {
     if (currentBeamAzimuth === null || currentBeamAzimuth === undefined) return;
-    
+
     const azimuth = currentBeamAzimuth;
-    
+
     // Create paths data - collection of points along the beam path
     const pathsData = [];
-    
+
     // Beam parameters - starts at 1 degree, widens to 20 degrees over distance
     const numSegments = 50; // More segments for smoother path
     const maxDistance = 18000; // km - nearly halfway around Earth
-    
+
     // Get subtle pulse value for outer lines only (0.5 to 0.7 opacity)
     const pulseTime = Date.now() / 3000; // Slow 3-second cycle
     const pulseFactor = 0.6 + Math.sin(pulseTime * Math.PI * 2) * 0.1; // Subtle pulse between 0.5 and 0.7
-    
+
     // Create left and right edge paths with subtle pulse
     for (let edge of ['left', 'right']) {
         const pathPoints = [];
-        
+
         for (let i = 0; i <= numSegments; i++) {
             const distance = (maxDistance / numSegments) * i;
             // Beam width increases progressively with distance
             const beamWidth = 1 + (19 * (i / numSegments)); // 1 to 20 degrees
-            
-            const edgeAzimuth = edge === 'left' 
-                ? (azimuth - beamWidth/2 + 360) % 360
-                : (azimuth + beamWidth/2) % 360;
-            
+
+            const edgeAzimuth = edge === 'left'
+                ? (azimuth - beamWidth / 2 + 360) % 360
+                : (azimuth + beamWidth / 2) % 360;
+
             const point = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, edgeAzimuth, distance);
             pathPoints.push([point.lat, point.lng, 0.01]); // Small altitude for visibility
         }
-        
+
         pathsData.push({
             path: pathPoints,
             color: `rgba(251, 191, 36, ${pulseFactor})`, // Subtle pulsing opacity for edges
             stroke: 3  // Thicker stroke for visibility
         });
     }
-    
+
     // Add center line for reference (static, no pulse)
     const centerPath = [];
     for (let i = 0; i <= numSegments; i++) {
@@ -163,13 +164,13 @@ function renderBeam() {
         const point = getDestinationPoint(LIMERICK_LAT, LIMERICK_LON, azimuth, distance);
         centerPath.push([point.lat, point.lng, 0.015]);
     }
-    
+
     pathsData.push({
         path: centerPath,
         color: 'rgba(251, 191, 36, 0.7)', // Static center line - more visible
         stroke: 2.5  // Thicker stroke
     });
-    
+
     // Update globe with paths
     globe
         .pathsData(pathsData)
