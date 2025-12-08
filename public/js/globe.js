@@ -13,8 +13,8 @@ function initGlobe() {
     globe = Globe()
         (globeContainer)
         .globeTileEngineUrl((x, y, l) => `https://mt1.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${l}`)
-        .globeImageUrl(null) // Disable static globe image
-        .bumpImageUrl(null) // Disable bump map as tiles provide detail
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
         .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
         .showAtmosphere(true)
         .atmosphereColor('rgba(63, 101, 251, 0.5)')
